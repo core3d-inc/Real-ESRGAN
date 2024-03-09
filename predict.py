@@ -41,7 +41,7 @@ class Predictor(BasePredictor):
         self,
         image: Path = Input(description="Input image"),
         scale: float = Input(
-            description="Factor to scale image by", ge=0, le=10, default=4
+            description="Factor to scale image by", ge=0, le=16, default=4
         ),
         tile: int = Input(
             description=
