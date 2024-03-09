@@ -23,5 +23,5 @@ build:
     - "mkdir -p /root/.cache/realesrgan; wget --quiet --output-document=/root/.cache/realesrgan/RealESRGAN_x4plus.pth https://models.nmb.ai/RealESRGAN_x4plus.pth;"
 
 # predict.py defines how predictions are run on your model
-image: "r8.im/nightmareai/real-esrgan"
+image: "r8.im/core3d-inc/real-esrgan"
 predict: "predict.py:Predictor"
