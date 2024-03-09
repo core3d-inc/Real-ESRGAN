@@ -19,10 +19,10 @@ class Predictor(BasePredictor):
         pass
 
     def get_model(self, tile):
-        if not self.model:
+        if 'model' not in self:
             self.model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
 
-        if not self.models_by_tile:
+        if 'models_by_tile' not in self:
             self.models_by_tile = {}
 
         if tile not in self.models_by_tile:
