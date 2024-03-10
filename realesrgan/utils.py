@@ -171,7 +171,9 @@ class RealESRGANer():
         return self.output
 
     @torch.no_grad()
-    def enhance(self, img, outscale=None, alpha_upsampler='realesrgan'):
+    def enhance(self, img, tile=None, outscale=None, alpha_upsampler='realesrgan'):
+        if tile is not None:
+            self.tile_size = tile
         h_input, w_input = img.shape[0:2]
         # img: numpy
         img = img.astype(np.float32)
