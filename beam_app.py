@@ -63,7 +63,6 @@ autoscaler = QueueDepthAutoscaler(
 )
 def predict(**inputs):
     upsampler = inputs["context"]
-    image, *_ = urllib.request.urlretrieve(inputs["image"])
 
     scale = inputs["scale"]
     if scale <= 0 or scale > 16:
@@ -74,6 +73,15 @@ def predict(**inputs):
         tile = inputs["tile"]
         if tile <= 100 or tile is None:
             tile = 0
+
+    image = inputs["image"]
+
+    if not image:
+        raise Exception("image is required")
+
+    print("url %s" % image)
+
+    image, *_ = urllib.request.urlretrieve(image)
 
     img = cv2.imread(str(image), cv2.IMREAD_UNCHANGED)
     output, *_ = upsampler.enhance(img, outscale=scale, tile=tile)
