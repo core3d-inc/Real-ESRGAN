@@ -10,7 +10,7 @@ app = App(
     name="Real-ESRGAN",
     runtime=Runtime(
         cpu=1,
-        memory="8Gi",
+        memory="16Gi",
         gpu="T4",
         image=Image(
             python_version="python3.8",
@@ -22,13 +22,8 @@ app = App(
                 "opencv-python==4.6.0.66",
                 "Pillow==9.1.1",
                 "tqdm==4.64.0",
-                # move to commands?
                 "basicsr",
                 "gfpgan",
-            ],
-            commands=[
-                # "pip install basicsr",
-                # "pip install gfpgan",
             ],
         ),
     ),
@@ -62,9 +57,9 @@ autoscaler = QueueDepthAutoscaler(
 
 @app.task_queue(
     autoscaler=autoscaler,
+    keep_warm_seconds=30,
     loader=load_upsampler,
     outputs=[Output(path="output.png")],
-    # keep_warm_seconds=300,
 )
 def predict(**inputs):
     upsampler = inputs["context"]
