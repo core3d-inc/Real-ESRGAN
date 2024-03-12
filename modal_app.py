@@ -134,14 +134,12 @@ class Model:
 
         try:
             result = FunctionCall.from_id(id).get(timeout=0)
+            volume.reload()
+            return fastapi.responses.FileResponse(result)
         except TimeoutError:
             return fastapi.responses.JSONResponse(status_code=202)
         except:
             return fastapi.responses.JSONResponse(status_code=410)
-
-        volume.reload()
-
-        return fastapi.responses.FileResponse(result)
 
 
 @stub.local_entrypoint()
