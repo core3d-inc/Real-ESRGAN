@@ -124,7 +124,7 @@ class Model:
 
 
     @web_endpoint(method="POST")
-    def status(self, data: Dict):
+    def result(self, data: Dict):
         import fastapi
 
         if "id" not in data:
@@ -148,101 +148,3 @@ class Model:
 def main(scale, url):
     output = Model.predict.remote(url, scale)
     print(output)
-
-# @stub.function(
-#     container_idle_timeout=30,
-#     cpu=1.0,
-#     gpu="t4",
-#     image=image,
-#     memory=16384,
-#     volumes={"/shared": volume}
-# )
-# @web_endpoint(method="POST")
-# def predict(data: Dict):
-#     pass
-
-
-
-# VOLUME_PATH = "./models"
-
-# app = App(
-#     name="Real-ESRGAN",
-#     runtime=Runtime(
-#         cpu=1,
-#         memory="16Gi",
-#         gpu="T4",
-#         image=Image(
-#             python_version="python3.8",
-#             python_packages=[
-#                 "numpy==1.20",
-#                 "torch==1.11.0",
-#                 "torchvision==0.12.0",
-#                 "facexlib==0.2.3",
-#                 "opencv-python==4.6.0.66",
-#                 "Pillow==9.1.1",
-#                 "tqdm==4.64.0",
-#                 "basicsr",
-#                 "gfpgan",
-#             ],
-#         ),
-#     ),
-#     volumes=[Volume(name="Real-ESRGAN", path=VOLUME_PATH)],
-# )
-
-# def load_upsampler():
-#     model = RRDBNet(
-#         num_in_ch=3,
-#         num_out_ch=3,
-#         num_feat=64,
-#         num_block=23,
-#         num_grow_ch=32,
-#         scale=4)
-
-#     upsampler = RealESRGANer(
-#         scale=4,
-#         model_path=os.path.join(VOLUME_PATH, "RealESRGAN_x4plus.pth"),
-#         model=model,
-#         tile=0,
-#         tile_pad=10,
-#         pre_pad=0,
-#         half=True)
-
-#     return upsampler
-
-# autoscaler = QueueDepthAutoscaler(
-#     max_tasks_per_replica=30,
-#     max_replicas=2,
-# )
-
-# @app.task_queue(
-#     autoscaler=autoscaler,
-#     keep_warm_seconds=30,
-#     loader=load_upsampler,
-#     outputs=[Output(path="output.png")],
-# )
-# def predict(**inputs):
-#     upsampler = inputs["context"]
-
-#     scale = inputs["scale"]
-#     if scale <= 0 or scale > 16:
-#         raise Exception("scale must be > 0 and <= 16")
-
-#     tile = 0
-#     if "tile" in inputs:
-#         tile = inputs["tile"]
-#         if tile <= 100 or tile is None:
-#             tile = 0
-
-#     image = inputs["image"]
-
-#     if not image:
-#         raise Exception("image is required")
-
-#     print("url %s" % image)
-
-#     image, *_ = urllib.request.urlretrieve(image)
-
-#     img = cv2.imread(str(image), cv2.IMREAD_UNCHANGED)
-#     output, *_ = upsampler.enhance(img, outscale=scale, tile=tile)
-
-#     cv2.imwrite("output.png", output)
