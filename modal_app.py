@@ -137,9 +137,9 @@ class Model:
             volume.reload()
             return fastapi.responses.FileResponse(result)
         except TimeoutError:
-            return fastapi.responses.JSONResponse(status_code=202)
+            return fastapi.responses.Response(status_code=202)
         except:
-            return fastapi.responses.JSONResponse(status_code=410)
+            return fastapi.responses.Response(status_code=410)
 
 
 @stub.local_entrypoint()
