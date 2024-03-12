@@ -125,7 +125,7 @@ class Model:
 
     @web_endpoint(method="POST")
     def result(self, data: Dict):
-        import fastapi
+        import fastapi, os
 
         if "id" not in data:
             raise Exception("id is required")
@@ -134,7 +134,12 @@ class Model:
 
         try:
             result = FunctionCall.from_id(id).get(timeout=0)
+
             volume.reload()
+
+            if not os.path.isfile(result):
+                raise Exception("result file does not exist")
+
             return fastapi.responses.FileResponse(result)
         except TimeoutError:
             return fastapi.responses.Response(status_code=202)
