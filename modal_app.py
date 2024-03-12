@@ -31,11 +31,11 @@ volume = Volume.from_name("upscaler-data", create_if_missing=True)
 VOLUME_PATH = "/shared"
 
 @stub.cls(
-    container_idle_timeout=30,
+    container_idle_timeout=60,
     cpu=1.0,
     gpu="t4",
     image=image,
-    memory=16384,
+    memory=8192,
     volumes={"/shared": volume}
 )
 class Model:
@@ -132,12 +132,12 @@ class Model:
 
         id = data["id"]
 
-        function_call = FunctionCall.from_id(id)
-
         try:
-            result = function_call.get(timeout=0)
+            result = FunctionCall.from_id(id).get(timeout=0)
         except TimeoutError:
-            return fastapi.responses.JSONResponse(content="", status_code=202)
+            return fastapi.responses.JSONResponse(status_code=202)
+        except:
+            return fastapi.responses.JSONResponse(status_code=410)
 
         volume.reload()
 
