@@ -1,4 +1,6 @@
-from modal import Image, enter, exit, method, Stub, Volume, web_endpoint
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from modal import Image, enter, exit, method, Secret, Stub, Volume, web_endpoint
 from modal.functions import FunctionCall
 from typing import Dict
 
@@ -26,9 +28,11 @@ image = (
         .copy_local_dir("realesrgan", "/usr/local/lib/python3.8/site-packages/realesrgan")
 )
 
+VOLUME_PATH = "/shared"
+
 volume = Volume.from_name("upscaler-data", create_if_missing=True)
 
-VOLUME_PATH = "/shared"
+auth_scheme = HTTPBearer()
 
 @stub.cls(
     container_idle_timeout=60,
@@ -36,6 +40,7 @@ VOLUME_PATH = "/shared"
     gpu="t4",
     image=image,
     memory=8192,
+    secrets=[Secret.from_name("auth-token")],
     volumes={"/shared": volume}
 )
 class Model:
@@ -96,55 +101,75 @@ class Model:
         return output_filepath
 
 
-    @web_endpoint(method="POST")
-    def queue(self, data: Dict):
+@stub.function(
+    secrets=[Secret.from_name("auth-token")],
+)
+@web_endpoint(method="POST")
+def queue(data: Dict, token: HTTPAuthorizationCredentials = Depends(auth_scheme)):
+    import os
 
-        if "scale" not in data:
-            raise Exception("scale is required")
+    if token.credentials != os.environ["AUTH_TOKEN"]:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-        scale = float(data["scale"])
+    if "scale" not in data:
+        raise Exception("scale is required")
 
-        if scale <= 0 or scale > 16:
-            raise Exception("scale must be > 0 and <= 16")
+    scale = float(data["scale"])
 
-        tile = None
-        if "tile" in data:
-            tile = int(data["tile"])
-            if tile <= 100:
-                tile = None
+    if scale <= 0 or scale > 16:
+        raise Exception("scale must be > 0 and <= 16")
 
-        if "url" not in data:
-            raise Exception("url is required")
+    tile = None
+    if "tile" in data:
+        tile = int(data["tile"])
+        if tile <= 100:
+            tile = None
 
-        url = data["url"]
+    if "url" not in data:
+        raise Exception("url is required")
 
-        call = self.predict.spawn(url, scale, tile)
+    url = data["url"]
 
-        return {"id": call.object_id}
+    call = Model().predict.spawn(url, scale, tile)
+
+    return {"id": call.object_id}
 
 
-    @web_endpoint(method="POST")
-    def result(self, data: Dict):
-        import fastapi, os
+@stub.function(
+    secrets=[Secret.from_name("auth-token")],
+    volumes={"/shared": volume},
+)
+@web_endpoint(method="POST")
+def result(data: Dict, token: HTTPAuthorizationCredentials = Depends(auth_scheme)):
+    import fastapi, os
 
-        if "id" not in data:
-            raise Exception("id is required")
+    if token.credentials != os.environ["AUTH_TOKEN"]:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-        id = data["id"]
+    if "id" not in data:
+        raise Exception("id is required")
 
-        try:
-            result = FunctionCall.from_id(id).get(timeout=0)
+    id = data["id"]
 
-            volume.reload()
+    try:
+        result = FunctionCall.from_id(id).get(timeout=0)
 
-            if not os.path.isfile(result):
-                raise Exception("result file does not exist")
+        volume.reload()
 
-            return fastapi.responses.FileResponse(result)
-        except TimeoutError:
-            return fastapi.responses.Response(status_code=202)
-        except:
-            return fastapi.responses.Response(status_code=410)
+        if not os.path.isfile(result):
+            raise Exception("result file does not exist")
+
+        return fastapi.responses.FileResponse(result)
+    except TimeoutError:
+        return fastapi.responses.Response(status_code=202)
+    except:
+        return fastapi.responses.Response(status_code=410)
 
 
 @stub.local_entrypoint()
