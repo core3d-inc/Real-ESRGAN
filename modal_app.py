@@ -16,14 +16,15 @@ image = (
         )
         .pip_install(
             "numpy==1.20",
-            "torch==1.11.0",
-            "torchvision==0.12.0",
+            "torch==1.11.0+cu115",
+            "torchvision==0.12.0+cu115",
             "facexlib==0.2.3",
             "opencv-python==4.6.0.66",
             "Pillow==9.1.1",
             "tqdm==4.64.0",
             "basicsr",
             "gfpgan",
+            find_links="https://download.pytorch.org/whl/torch_stable.html",
         )
         .copy_local_dir("realesrgan", "/usr/local/lib/python3.8/site-packages/realesrgan")
 )
@@ -37,7 +38,7 @@ auth_scheme = HTTPBearer()
 @stub.cls(
     container_idle_timeout=60,
     cpu=1.0,
-    gpu="t4",
+    gpu="a10g",
     image=image,
     memory=8192,
     secrets=[Secret.from_name("auth-token")],
@@ -173,6 +174,6 @@ def result(data: Dict, token: HTTPAuthorizationCredentials = Depends(auth_scheme
 
 
 @stub.local_entrypoint()
-def main(scale, url):
-    output = Model.predict.remote(url, scale)
+def main(scale, url, tile=None):
+    output = Model.predict.remote(url, scale, tile)
     print(output)
