@@ -139,7 +139,7 @@ def queue(data: Dict, token: HTTPAuthorizationCredentials = Depends(auth_scheme)
     call = Model().predict.spawn(url, scale, tile)
 
     return fastapi.responses.JSONResponse(content={"id": call.object_id},
-                                          status=201)
+                                          status_code=201)
 
 
 @stub.function(
