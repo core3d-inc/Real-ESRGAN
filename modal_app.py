@@ -24,6 +24,7 @@ image = (
             "tqdm==4.64.0",
             "basicsr",
             "gfpgan",
+            "boto3[crt]",
             find_links="https://download.pytorch.org/whl/torch_stable.html",
         )
         .copy_local_dir("realesrgan", "/usr/local/lib/python3.8/site-packages/realesrgan")
@@ -72,20 +73,17 @@ class Model:
 
     @exit()
     def cleanup(self):
-        import shutil
-        shutil.rmtree(self.dirpath)
-        volume.commit()
+        pass
 
     @method()
     def predict(self, url, scale, tile=None):
         from shutil import copyfileobj
         from urllib.request import urlopen
-        import cv2, os, uuid
+        import boto3, cv2, os, uuid
 
         os.mkdir(self.dirpath)
 
         input_filepath = os.path.join(self.dirpath, "%s.png" % uuid.uuid4())
-        output_filepath = os.path.join(self.dirpath, "%s.png" % uuid.uuid4())
 
         with urlopen(url) as in_stream, open(input_filepath, 'wb') as out_file:
             copyfileobj(in_stream, out_file)
@@ -93,13 +91,17 @@ class Model:
         image = cv2.imread(input_filepath, cv2.IMREAD_UNCHANGED)
         output, *_ = self.upsampler.enhance(image, outscale=scale, tile=tile)
 
-        cv2.imwrite(output_filepath, output)
-
         os.unlink(input_filepath)
 
-        volume.commit()
+        output_key = "next/cache/modal/%s.png" % uuid.uuid4()
 
-        return output_filepath
+        s3 = boto3.client("s3")
+        image_bytes = cv2.imencode(".png", output)[1].tobytes()
+        s3.put_object(Bucket="core3d-production",
+                      Key=output_key,
+                      Body=image_bytes)
+
+        return "s3://core3d-production/%s" % output_key
 
 
 @stub.function(
@@ -107,7 +109,7 @@ class Model:
 )
 @web_endpoint(method="POST")
 def queue(data: Dict, token: HTTPAuthorizationCredentials = Depends(auth_scheme)):
-    import os
+    import fastapi, os
 
     if token.credentials != os.environ["AUTH_TOKEN"]:
         raise HTTPException(
@@ -123,11 +125,11 @@ def queue(data: Dict, token: HTTPAuthorizationCredentials = Depends(auth_scheme)
     if scale <= 0 or scale > 16:
         raise Exception("scale must be > 0 and <= 16")
 
-    tile = None
+    tile = 512
     if "tile" in data:
         tile = int(data["tile"])
         if tile <= 100:
-            tile = None
+            tile = 512
 
     if "url" not in data:
         raise Exception("url is required")
@@ -136,7 +138,8 @@ def queue(data: Dict, token: HTTPAuthorizationCredentials = Depends(auth_scheme)
 
     call = Model().predict.spawn(url, scale, tile)
 
-    return {"id": call.object_id}
+    return fastapi.responses.JSONResponse(content={"id": call.object_id},
+                                          status=201)
 
 
 @stub.function(
@@ -160,13 +163,7 @@ def result(data: Dict, token: HTTPAuthorizationCredentials = Depends(auth_scheme
 
     try:
         result = FunctionCall.from_id(id).get(timeout=0)
-
-        volume.reload()
-
-        if not os.path.isfile(result):
-            raise Exception("result file does not exist")
-
-        return fastapi.responses.FileResponse(result)
+        return {"url": result}
     except TimeoutError:
         return fastapi.responses.Response(status_code=202)
     except:
