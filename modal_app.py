@@ -37,7 +37,7 @@ volume = Volume.from_name("upscaler-data", create_if_missing=True)
 auth_scheme = HTTPBearer()
 
 @stub.cls(
-    container_idle_timeout=60,
+    container_idle_timeout=2,
     cpu=1.0,
     gpu="a10g",
     image=image,
@@ -105,6 +105,7 @@ class Model:
 
 
 @stub.function(
+    container_idle_timeout=2,
     secrets=[Secret.from_name("auth-token")],
 )
 @web_endpoint(method="POST")
@@ -143,6 +144,7 @@ def queue(data: Dict, token: HTTPAuthorizationCredentials = Depends(auth_scheme)
 
 
 @stub.function(
+    container_idle_timeout=10,
     secrets=[Secret.from_name("auth-token")],
     volumes={"/shared": volume},
 )
