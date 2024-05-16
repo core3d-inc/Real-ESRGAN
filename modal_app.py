@@ -43,6 +43,7 @@ auth_scheme = HTTPBearer()
     image=image,
     memory=8192,
     secrets=[Secret.from_name("auth-token")],
+    timeout=600,
     volumes={"/shared": volume}
 )
 class Model:
