@@ -124,8 +124,8 @@ def queue(data: Dict, token: HTTPAuthorizationCredentials = Depends(auth_scheme)
 
     scale = float(data["scale"])
 
-    if scale <= 0 or scale > 16:
-        raise Exception("scale must be > 0 and <= 16")
+    if scale <= 0 or scale > 20:
+        raise Exception("scale must be > 0 and <= 20")
 
     tile = 512
     if "tile" in data:
